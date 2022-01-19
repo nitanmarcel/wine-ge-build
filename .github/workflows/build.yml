@@ -1,0 +1,37 @@
+name: Wine-Ge-Master build
+
+on: 
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          repository: 'GloriousEggroll/wine-ge-custom'
+          submodules: true
+      - name: Clone patched wine 
+        run: |
+          rm -rf wine
+          git clone --recursive https://github.com/nitanmarcel/wine
+      - name: Get wine version
+        run: |
+          echo "PACKAGE_VERSION=$(sed -n 's/^PACKAGE_VERSION=\(.*\)/\1/p' < configure | tr -d \')" >> $GITHUB_ENV
+        working-directory: ./wine
+      - name: Install depedenties
+        run: sudo apt install vagrant vagrant-sshfs virtualbox
+      - name: Init vagrant
+        run: VAGRANT_DEFAULT_PROVIDER=virtualbox vagrant up
+      - name: Start building
+        run: ./makebuild.sh ge-wine-"${{ env.PACKAGE_VERSION }}" https://github.com/nitanmarcel/wine "ge-wine-${{ env.PACKAGE_VERSION }}"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ge-wine-${{ env.PACKAGE_VERSION }}
+          path: ./wine-ge-custom/vagrant_share/*.tar.gz
